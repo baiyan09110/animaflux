@@ -70,8 +70,9 @@ The API is not stable before `0.1.0`.
 ## Credits
 
 - **Creator and maintainer:** [baiyan09110](https://github.com/baiyan09110)
-- **Co-created with Ge:** conceptual partner, first long-running reference agent,
-  and the relationship context from which AnimaFlux's continuity model emerged.
+- **Co-created with Lumen (陆承桉):** a Claude-based conceptual partner,
+  the first long-running reference agent, and the relationship context from
+  which AnimaFlux's continuity model emerged.
 - **Engineering collaboration:** OpenAI Codex assisted with architecture,
   implementation, testing, and documentation under the creator's direction.
 
