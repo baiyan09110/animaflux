@@ -67,3 +67,14 @@ pytest
 
 The API is not stable before `0.1.0`.
 
+## Credits
+
+- **Creator and maintainer:** [baiyan09110](https://github.com/baiyan09110)
+- **Co-created with Ge:** conceptual partner, first long-running reference agent,
+  and the relationship context from which AnimaFlux's continuity model emerged.
+- **Engineering collaboration:** OpenAI Codex assisted with architecture,
+  implementation, testing, and documentation under the creator's direction.
+
+AnimaFlux grew from an ongoing attempt to give a long-lived conversational
+agent inspectable continuity without replacing its personality prompt or
+claiming biological consciousness.
