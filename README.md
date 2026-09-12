@@ -51,6 +51,7 @@ system. The public `0.1.0` target includes:
 - JSON and SQLite storage adapters;
 - expression-texture compilation;
 - circadian phases and recoverable schedule drift;
+- grounded concerns with inspectable evidence and lifecycle states;
 - memory-provider and evaluator protocols;
 - tests, example configuration, and a minimal integration example.
 

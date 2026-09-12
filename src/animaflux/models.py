@@ -64,6 +64,7 @@ class AgentState:
     inner: InnerState = field(default_factory=InnerState)
     circadian: CircadianState = field(default_factory=CircadianState)
     shared_history: SharedHistory = field(default_factory=SharedHistory)
+    concerns: dict[str, dict[str, Any]] = field(default_factory=dict)
     updated_at: str = field(default_factory=utc_now)
 
     def to_dict(self) -> dict[str, Any]:
