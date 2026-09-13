@@ -143,7 +143,8 @@ class StateEngine:
                 return Transition.from_dict(existing)
         memory = memory or MemoryInfluence()
         now = now or datetime.now(UTC)
-        previous = self.decayed(self.current(), now)
+        source_state = self.current()
+        previous = self.decayed(source_state, now)
         self._apply_circadian(previous, now, interaction_count, late_interaction)
         appraisal, proposed = self.evaluator.evaluate(event, copy.deepcopy(previous), memory)
         applied = self.bounded_delta(previous, proposed)
@@ -159,6 +160,7 @@ class StateEngine:
             proposed_delta=copy.deepcopy(proposed.values),
             applied_delta=applied.values,
             next_state=next_state,
+            source_state=source_state,
             policy_notes=notes,
             memory_refs=memory.event_refs,
         )

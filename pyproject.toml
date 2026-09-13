@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "animaflux"
-version = "0.1.2"
+version = "0.1.3"
 description = "Continuity beneath the conversation."
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"

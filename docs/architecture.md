@@ -31,6 +31,12 @@ its immutable transition event in one transaction. `JsonStore` is intentionally
 a single-process prototype backend: its two files cannot provide crash atomicity
 or cross-process locking.
 
+Audit terminology is explicit: `source_state` is the raw persisted state before
+time decay, `previous_state` is the temporally current state presented to the
+evaluator, and `next_state` is the committed result. State loading follows an
+ordered schema-migration registry and refuses unknown future versions instead
+of silently downgrading them.
+
 ## Circadian continuity
 
 Schedule drift delays actual sleep and the following wake time. It does not

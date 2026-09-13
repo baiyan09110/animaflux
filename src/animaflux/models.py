@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 CURRENT_SCHEMA_VERSION = 1
+Migration = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 def utc_now() -> str:
@@ -127,6 +129,7 @@ class Transition:
     proposed_delta: dict[str, dict[str, float]]
     applied_delta: dict[str, dict[str, float]]
     next_state: dict[str, Any]
+    source_state: dict[str, Any] | None = None
     policy_notes: list[str] = field(default_factory=list)
     memory_refs: list[str] = field(default_factory=list)
 
@@ -145,6 +148,7 @@ class Transition:
             proposed_delta=value.get("proposed_delta", value.get("applied_delta", {})),
             applied_delta=value.get("applied_delta", {}),
             next_state=value["next_state"],
+            source_state=value.get("source_state", value.get("previous_state")),
             policy_notes=list(value.get("policy_notes", [])),
             memory_refs=list(value.get("memory_refs", [])),
         )
@@ -158,11 +162,44 @@ def _known(model: type, value: Any) -> dict[str, Any]:
 
 
 def normalize_state(value: dict[str, Any] | None) -> dict[str, Any]:
-    """Fill and type-check built-in fields while preserving host extensions."""
+    """Run ordered schema migrations, then validate fields without dropping extensions."""
+    migrated = migrate_state(value)
     defaults = AgentState().to_dict()
-    normalized = _merge_defaults(defaults, value if isinstance(value, dict) else {})
+    normalized = _merge_defaults(defaults, migrated)
     normalized["schema_version"] = CURRENT_SCHEMA_VERSION
     return normalized
+
+
+def _migrate_0_to_1(state: dict[str, Any]) -> dict[str, Any]:
+    state["schema_version"] = 1
+    return state
+
+
+MIGRATIONS: dict[int, Migration] = {0: _migrate_0_to_1}
+
+
+def migrate_state(value: dict[str, Any] | None) -> dict[str, Any]:
+    """Migrate a copied state through every version; reject unknown future schemas."""
+    state = copy.deepcopy(value) if isinstance(value, dict) else {}
+    raw_version = state.get("schema_version", 0)
+    if not isinstance(raw_version, int) or isinstance(raw_version, bool) or raw_version < 0:
+        raise ValueError("schema_version must be a non-negative integer")
+    if raw_version > CURRENT_SCHEMA_VERSION:
+        raise ValueError(
+            f"state schema {raw_version} is newer than supported schema {CURRENT_SCHEMA_VERSION}"
+        )
+    version = raw_version
+    while version < CURRENT_SCHEMA_VERSION:
+        migration = MIGRATIONS.get(version)
+        if migration is None:
+            raise ValueError(f"missing state migration from schema {version}")
+        state = migration(state)
+        version += 1
+        if state.get("schema_version") != version:
+            raise ValueError(
+                f"migration from schema {version - 1} did not produce schema {version}"
+            )
+    return state
 
 
 def _merge_defaults(defaults: Any, value: Any) -> Any:

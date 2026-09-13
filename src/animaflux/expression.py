@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 class ExpressionTexture:
     guidance: list[str] = field(default_factory=list)
     reasons: list[str] = field(default_factory=list)
+    omitted_rules: int = 0
 
     def as_context(self) -> str:
         rules = "\n".join(f"- {rule}" for rule in self.guidance)
@@ -17,7 +18,12 @@ class ExpressionTexture:
         )
 
 
-def compile_expression(state: dict) -> ExpressionTexture:
+def compile_expression(
+    state: dict,
+    *,
+    max_rules: int = 6,
+    max_characters: int = 1200,
+) -> ExpressionTexture:
     """Compile observable writing constraints without inventing new facts."""
     emotion = state.get("emotion", {})
     relationship = state.get("relationship", {})
@@ -95,4 +101,30 @@ def compile_expression(state: dict) -> ExpressionTexture:
     if not rules:
         rules.append("Use a stable, natural cadence without artificially performing a state.")
         reasons.append("neutral")
-    return ExpressionTexture(rules, reasons)
+    budgeted = _budget_guidance(rules, max_rules=max_rules, max_characters=max_characters)
+    return ExpressionTexture(budgeted, reasons, omitted_rules=len(rules) - len(budgeted))
+
+
+def _budget_guidance(rules: list[str], *, max_rules: int, max_characters: int) -> list[str]:
+    """Keep prompt cost bounded while retaining alertness-critical instructions first."""
+    if max_rules < 1 or max_characters < 1:
+        return []
+    priority_markers = (
+        "Circadian state has priority",
+        "Treat the message as a brief rousing",
+        "Recover coherence gradually",
+        "Make drowsiness observable",
+    )
+    ranked = sorted(
+        enumerate(rules),
+        key=lambda item: (not any(marker in item[1] for marker in priority_markers), item[0]),
+    )
+    selected: list[tuple[int, str]] = []
+    used = 0
+    for index, rule in ranked:
+        cost = len(rule) + 2
+        if len(selected) >= max_rules or used + cost > max_characters:
+            continue
+        selected.append((index, rule))
+        used += cost
+    return [rule for _, rule in sorted(selected)]

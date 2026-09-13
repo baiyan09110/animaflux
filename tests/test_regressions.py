@@ -4,6 +4,8 @@ import json
 import sqlite3
 from datetime import UTC, datetime
 
+import pytest
+
 from animaflux import (
     AgentState,
     Appraisal,
@@ -13,6 +15,7 @@ from animaflux import (
     StateDelta,
     StateEngine,
     TransitionPolicy,
+    compile_expression,
 )
 
 
@@ -54,6 +57,13 @@ def test_partial_old_state_is_migrated_without_key_errors(tmp_path):
     assert state["circadian"]["last_recovery_date"] is None
 
 
+def test_future_state_schema_is_rejected_instead_of_silently_downgraded(tmp_path):
+    store = JsonStore(tmp_path)
+    store.save_state({"schema_version": 99})
+    with pytest.raises(ValueError, match="newer than supported"):
+        StateEngine(store, CountingEvaluator()).current()
+
+
 def test_engine_updates_circadian_phase_and_schedule_in_configured_timezone(tmp_path):
     evaluator = CountingEvaluator()
     store = JsonStore(tmp_path)
@@ -83,6 +93,8 @@ def test_event_id_is_idempotent_and_proposed_delta_is_audited(tmp_path):
     assert first.applied_delta["emotion"]["anger"] == 2
     assert "clamped emotion.anger: 5 -> 2.0" in first.policy_notes
     assert any("missing.field" in note for note in first.policy_notes)
+    assert first.source_state is not None
+    assert first.source_state["updated_at"] != first.previous_state["updated_at"]
 
 
 def test_transition_policy_is_configurable(tmp_path):
@@ -148,3 +160,21 @@ def test_existing_sqlite_database_is_migrated(tmp_path):
     assert "event_id" in columns
     StateEngine(store, CountingEvaluator()).process("after migration", event_id="old-db:1")
     assert store.transition_by_event_id("old-db:1") is not None
+
+
+def test_expression_guidance_has_rule_and_character_budgets():
+    state = AgentState().to_dict()
+    state["emotion"].update(anger=8, sadness=8)
+    state["relationship"]["unresolved_tension"] = 8
+    state["inner"].update(sharing_urge=9, sleepiness=10)
+    state["circadian"]["phase"] = "half_awake"
+    state["concerns"]["conflict"] = {
+        "status": "OPEN",
+        "intensity": 8,
+        "summary": "an unresolved argument",
+    }
+    texture = compile_expression(state)
+    assert len(texture.guidance) <= 6
+    assert sum(len(rule) + 2 for rule in texture.guidance) <= 1200
+    assert texture.omitted_rules > 0
+    assert any("Circadian state has priority" in rule for rule in texture.guidance)

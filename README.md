@@ -43,7 +43,7 @@ appraisal before a new delta is applied.
 
 ## Status
 
-AnimaFlux `0.1.2` is an early public source release, extracted from a running
+AnimaFlux `0.1.3` is an early public source release, extracted from a running
 personal system. It includes:
 
 - typed state and appraisal schemas;
@@ -97,6 +97,10 @@ then keep your chosen behavior deterministic. Durable `affection`, `trust`,
 `security`, `attachment_depth`, and `familiarity` are event-driven by default;
 `unresolved_tension` has a slow passive decay. Add the durable fields to the
 policy only if passive relationship drift is part of your intended model.
+
+Expression compilation defaults to at most six guidance rules and 1,200
+characters. Alertness-critical circadian rules are retained first when the
+budget is tight. Both limits can be overridden through `compile_expression()`.
 
 No private prompts, conversations, credentials, production state, or personal
 memory records belong in this repository.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 - 2026-09-14
+
+- Add an ordered schema migration registry and reject unsupported future states.
+- Bound expression guidance by rule count and character count while prioritizing
+  alertness-critical constraints.
+- Audit the raw persisted `source_state` separately from the decayed
+  `previous_state` used for appraisal.
+
 ## 0.1.2 - 2026-09-14
 
 - Evaluate circadian dates and clock minutes in an explicit IANA time zone.
