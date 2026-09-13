@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 PHASES = {"awake", "wind_down", "sleepy", "asleep", "half_awake", "waking"}
 
@@ -17,6 +19,15 @@ class CircadianPolicy:
     max_schedule_offset: int = 180
     late_interaction_shift: int = 8
     daily_recovery: float = 0.75
+    timezone_name: str | None = None
+
+    def local_time(self, value: datetime) -> datetime:
+        """Use an explicit IANA zone, or the host's local zone when omitted."""
+        return (
+            value.astimezone(ZoneInfo(self.timezone_name))
+            if self.timezone_name
+            else value.astimezone()
+        )
 
     def phase_at(self, minute: int, offset: int = 0) -> str:
         offset = max(0, min(self.max_schedule_offset, offset))
@@ -50,10 +61,25 @@ class CircadianPolicy:
     def recover_next_day(self, offset: int) -> int:
         return max(0, int(min(self.max_schedule_offset, offset) * self.daily_recovery))
 
+    def recover_elapsed(
+        self, offset: int, last_recovery_date: str | None, date_key: str
+    ) -> tuple[int, str]:
+        """Apply one recovery step per elapsed local calendar day."""
+        if last_recovery_date == date_key:
+            return max(0, min(self.max_schedule_offset, offset)), date_key
+        days = 1
+        if last_recovery_date:
+            try:
+                days = max(
+                    0, (date.fromisoformat(date_key) - date.fromisoformat(last_recovery_date)).days
+                )
+            except ValueError:
+                days = 1
+        bounded = max(0, min(self.max_schedule_offset, offset))
+        return max(0, int(bounded * (self.daily_recovery**days))), date_key
+
     def recover_once(
         self, offset: int, last_recovery_date: str | None, date_key: str
     ) -> tuple[int, str]:
-        """Recover at most once for a calendar date."""
-        if last_recovery_date == date_key:
-            return max(0, min(self.max_schedule_offset, offset)), date_key
-        return self.recover_next_day(offset), date_key
+        """Backward-compatible alias for elapsed-day recovery."""
+        return self.recover_elapsed(offset, last_recovery_date, date_key)

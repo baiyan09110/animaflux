@@ -40,9 +40,12 @@ rouses the agent after the current phase has reached `asleep`; messages during
 `wind_down` or `sleepy` preserve those phases.
 
 When a `CircadianPolicy` is passed to `StateEngine`, `process()` computes the
-phase, performs schedule recovery at most once per calendar date, and optionally
-applies late-interaction drift. The host still decides whether an interaction is
-late and passes `late_interaction=True`; it does not have to mutate phases itself.
+phase in its configured IANA time zone, performs one schedule-recovery step for
+every elapsed local calendar day, and optionally applies late-interaction drift.
+The host still decides whether an interaction is late and passes
+`late_interaction=True`; it does not have to mutate phases itself. It also passes
+an `interaction_count` for the current wake-up episode when it wants repeated
+messages to progress from `half_awake` to `waking`.
 
 Circadian guidance constrains response form, not truth or capability. Host
 applications should keep necessary content and safety intact while making low

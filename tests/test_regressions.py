@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 
@@ -35,6 +36,14 @@ def test_small_circadian_offsets_recover_to_zero_and_only_once_per_day():
     assert policy.recover_once(offset, date, "2026-09-14") == (0, "2026-09-14")
 
 
+def test_circadian_recovery_accounts_for_every_silent_day():
+    policy = CircadianPolicy()
+    assert policy.recover_elapsed(120, "2026-09-09", "2026-09-14") == (
+        28,
+        "2026-09-14",
+    )
+
+
 def test_partial_old_state_is_migrated_without_key_errors(tmp_path):
     store = JsonStore(tmp_path)
     store.save_state({"emotion": {"anger": 7}, "updated_at": "2026-09-13T00:00:00+00:00"})
@@ -45,20 +54,22 @@ def test_partial_old_state_is_migrated_without_key_errors(tmp_path):
     assert state["circadian"]["last_recovery_date"] is None
 
 
-def test_engine_updates_circadian_phase_and_schedule(tmp_path):
+def test_engine_updates_circadian_phase_and_schedule_in_configured_timezone(tmp_path):
     evaluator = CountingEvaluator()
     store = JsonStore(tmp_path)
     state = AgentState().to_dict()
     state["circadian"]["schedule_offset_minutes"] = 4
     store.save_state(state)
-    transition = StateEngine(store, evaluator, circadian_policy=CircadianPolicy()).process(
+    policy = CircadianPolicy(timezone_name="Asia/Shanghai")
+    transition = StateEngine(store, evaluator, circadian_policy=policy).process(
         "late message",
-        now=datetime(2026, 9, 13, 2, 0, tzinfo=UTC),
+        now=datetime(2026, 9, 13, 17, 30, tzinfo=UTC),
         interaction_count=1,
         late_interaction=True,
     )
     assert transition.previous_state["circadian"]["phase"] == "half_awake"
     assert transition.previous_state["circadian"]["schedule_offset_minutes"] == 11
+    assert transition.previous_state["circadian"]["last_recovery_date"] == "2026-09-14"
 
 
 def test_event_id_is_idempotent_and_proposed_delta_is_audited(tmp_path):
@@ -80,6 +91,38 @@ def test_transition_policy_is_configurable(tmp_path):
         "bounded"
     )
     assert transition.applied_delta["emotion"]["anger"] == 0.5
+
+
+def test_apply_defensively_bounds_a_direct_delta(tmp_path):
+    engine = StateEngine(JsonStore(tmp_path), CountingEvaluator())
+    state = AgentState().to_dict()
+    next_state = engine.apply(state, StateDelta({"emotion": {"anger": 9}}))
+    assert next_state["emotion"]["anger"] == 2
+
+
+def test_state_normalization_preserves_extensions_and_repairs_bad_types(tmp_path):
+    store = JsonStore(tmp_path)
+    state = AgentState().to_dict()
+    state["host_extension"] = {"private_mode": True}
+    state["emotion"]["custom_affect"] = 8
+    state["emotion"]["anger"] = "high"
+    store.save_state(state)
+    normalized = StateEngine(store, CountingEvaluator()).current()
+    assert normalized["host_extension"] == {"private_mode": True}
+    assert normalized["emotion"]["custom_affect"] == 8
+    assert normalized["emotion"]["anger"] == 0
+
+
+def test_json_idempotency_index_has_no_ten_thousand_event_window(tmp_path):
+    target = {"event_id": "oldest", "transition_id": "oldest-transition"}
+    rows = [target, *({"event_id": f"new-{index}"} for index in range(10_001))]
+    (tmp_path / "transitions.jsonl").write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+    store = JsonStore(tmp_path)
+    assert store.transition_by_event_id("oldest") == target
+    assert (tmp_path / "event_index.jsonl").exists()
 
 
 def test_existing_sqlite_database_is_migrated(tmp_path):

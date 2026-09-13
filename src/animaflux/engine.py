@@ -7,7 +7,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from .circadian import CircadianPolicy
-from .models import AgentState, Appraisal, MemoryInfluence, StateDelta, Transition
+from .models import Appraisal, MemoryInfluence, StateDelta, Transition, normalize_state
 from .storage import StateStore
 
 
@@ -75,7 +75,7 @@ class StateEngine:
 
     def current(self) -> dict:
         state = self.store.load_state()
-        normalized = AgentState.from_dict(state).to_dict()
+        normalized = normalize_state(state)
         if state != normalized:
             state = normalized
             self.store.save_state(state)
@@ -100,8 +100,13 @@ class StateEngine:
                 continue
             for name, change in changes.items():
                 if name in result[group] and isinstance(result[group][name], (int, float)):
+                    bounded_change = _clamp(
+                        change,
+                        self.policy.delta_min,
+                        self.policy.delta_max,
+                    )
                     result[group][name] = _clamp(
-                        result[group][name] + change,
+                        result[group][name] + bounded_change,
                         self.policy.value_min,
                         self.policy.value_max,
                     )
@@ -166,15 +171,16 @@ class StateEngine:
         if self.circadian_policy is None:
             return
         circadian = state["circadian"]
-        date_key = now.date().isoformat()
-        offset, recovered_on = self.circadian_policy.recover_once(
+        local = self.circadian_policy.local_time(now)
+        date_key = local.date().isoformat()
+        offset, recovered_on = self.circadian_policy.recover_elapsed(
             int(circadian["schedule_offset_minutes"]),
             circadian.get("last_recovery_date"),
             date_key,
         )
         if late_interaction:
             offset = self.circadian_policy.after_late_interaction(offset)
-        minute = now.hour * 60 + now.minute
+        minute = local.hour * 60 + local.minute
         phase = self.circadian_policy.phase_at(minute, offset)
         phase = self.circadian_policy.phase_after_interaction(phase, interaction_count)
         if phase != circadian.get("phase"):

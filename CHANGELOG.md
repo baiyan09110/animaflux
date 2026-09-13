@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2 - 2026-09-14
+
+- Evaluate circadian dates and clock minutes in an explicit IANA time zone.
+- Recover schedule drift for every elapsed silent day rather than only once per call.
+- Replace the JSON idempotency lookback window with a reconciled event index.
+- Restore defensive delta bounds inside direct `apply()` calls.
+- Preserve host-defined state extensions and repair invalid built-in field types.
+- Use explicitly managed SQLite transactions and close connections reliably.
+
 ## 0.1.1 - 2026-09-13
 
 - Make small circadian offsets converge to zero and guard daily recovery.

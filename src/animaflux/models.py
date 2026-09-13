@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -77,7 +78,7 @@ class AgentState:
     @classmethod
     def from_dict(cls, value: dict[str, Any] | None) -> AgentState:
         """Load old/partial persisted state by filling all missing fields."""
-        value = value or {}
+        value = normalize_state(value)
         return cls(
             schema_version=CURRENT_SCHEMA_VERSION,
             emotion=EmotionState(**_known(EmotionState, value.get("emotion", {}))),
@@ -154,3 +155,38 @@ def _known(model: type, value: Any) -> dict[str, Any]:
         return {}
     names = model.__dataclass_fields__
     return {key: item for key, item in value.items() if key in names}
+
+
+def normalize_state(value: dict[str, Any] | None) -> dict[str, Any]:
+    """Fill and type-check built-in fields while preserving host extensions."""
+    defaults = AgentState().to_dict()
+    normalized = _merge_defaults(defaults, value if isinstance(value, dict) else {})
+    normalized["schema_version"] = CURRENT_SCHEMA_VERSION
+    return normalized
+
+
+def _merge_defaults(defaults: Any, value: Any) -> Any:
+    if isinstance(defaults, dict):
+        if not isinstance(value, dict):
+            return copy.deepcopy(defaults)
+        result = copy.deepcopy(value)
+        for key, default in defaults.items():
+            result[key] = _merge_defaults(default, value.get(key))
+        return result
+    if isinstance(defaults, list):
+        return copy.deepcopy(value) if isinstance(value, list) else copy.deepcopy(defaults)
+    if isinstance(defaults, float):
+        return (
+            float(value)
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+            else defaults
+        )
+    if isinstance(defaults, int):
+        return (
+            int(value)
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+            else defaults
+        )
+    if isinstance(defaults, str):
+        return value if isinstance(value, str) else defaults
+    return copy.deepcopy(value) if value is not None else copy.deepcopy(defaults)

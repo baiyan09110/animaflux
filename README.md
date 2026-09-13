@@ -36,14 +36,14 @@ appraisal before a new delta is applied.
 
 - Personality remains owned by the host application; AnimaFlux adds context.
 - Memories influence interpretation rather than directly assigning emotion.
-- Short-lived affect and long-lived relationship state decay differently.
+- Decay is configured per field; durable relationship dimensions are event-driven by default.
 - Subjectivity is represented as perspective and involvement, not consciousness.
 - Expression texture changes *how* a response is written without changing facts.
 - Every committed transition is inspectable and storage backends are replaceable.
 
 ## Status
 
-AnimaFlux `0.1.1` is an early public source release, extracted from a running
+AnimaFlux `0.1.2` is an early public source release, extracted from a running
 personal system. It includes:
 
 - typed state and appraisal schemas;
@@ -61,9 +61,13 @@ The host supplies an evaluator. AnimaFlux owns decay, bounds, persistence,
 circadian context, and transition audit:
 
 ```python
-from animaflux import JsonStore, StateEngine
+from animaflux import CircadianPolicy, JsonStore, StateEngine
 
-engine = StateEngine(JsonStore("runtime"), MyEvaluator())
+engine = StateEngine(
+    JsonStore("runtime"),
+    MyEvaluator(),
+    circadian_policy=CircadianPolicy(timezone_name="Asia/Shanghai"),
+)
 transition = engine.process(
     "The user came back after an argument.",
     event_id="telegram:update:1234",
@@ -76,6 +80,12 @@ bounded `applied_delta`. See [`examples/basic.py`](examples/basic.py) for a
 runnable example and [`docs/architecture.md`](docs/architecture.md) for the
 ownership boundary.
 
+Circadian clock values are interpreted in `CircadianPolicy.timezone_name`.
+Configure an IANA zone explicitly in containers and servers; when it is omitted,
+AnimaFlux uses the host system's local zone. `interaction_count` means the number
+of interactions in the current wake-up episode: 1–3 produces `half_awake`, while
+4 or more produces `waking`. The host owns that episode counter.
+
 `JsonStore` is convenient for a single-process prototype, but its state and
 JSONL audit log cannot be made crash-atomic together. Use `SQLiteStore` for a
 long-running or concurrent process; it commits both records in one transaction.
@@ -83,7 +93,10 @@ long-running or concurrent process; it commits both records in one transaction.
 The bundled decay targets and half-lives are transparent starter defaults, not
 claims of psychological calibration. Copy or modify `TransitionPolicy.dynamics`
 for the character and evidence available in your integration; regression tests
-then keep your chosen behavior deterministic.
+then keep your chosen behavior deterministic. Durable `affection`, `trust`,
+`security`, `attachment_depth`, and `familiarity` are event-driven by default;
+`unresolved_tension` has a slow passive decay. Add the durable fields to the
+policy only if passive relationship drift is part of your intended model.
 
 No private prompts, conversations, credentials, production state, or personal
 memory records belong in this repository.

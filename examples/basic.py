@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from tempfile import TemporaryDirectory
 
-from animaflux import Appraisal, JsonStore, StateDelta, StateEngine
+from animaflux import Appraisal, CircadianPolicy, JsonStore, StateDelta, StateEngine
 
 
 class ExampleEvaluator:
@@ -24,7 +24,11 @@ class ExampleEvaluator:
 
 
 with TemporaryDirectory() as runtime_directory:
-    engine = StateEngine(JsonStore(runtime_directory), ExampleEvaluator())
+    engine = StateEngine(
+        JsonStore(runtime_directory),
+        ExampleEvaluator(),
+        circadian_policy=CircadianPolicy(timezone_name="Asia/Shanghai"),
+    )
     transition = engine.process(
         "The user returned after a disagreement.",
         event_id="example:event:1",
