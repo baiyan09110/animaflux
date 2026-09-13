@@ -24,6 +24,26 @@ def test_same_evidence_cannot_accumulate_pressure_twice():
     assert repeated.evidence_refs == ["event-1"]
 
 
+def test_same_episode_collects_evidence_without_runaway_intensity():
+    policy = ConcernPolicy(episode_cooldown_hours=6)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    concern = policy.activate(None, key="conflict", summary="first signal",
+                              evidence_ref="event-1", confidence=0.9,
+                              intensity_delta=4, now=start)
+    policy.activate(concern, key="conflict", summary="same episode",
+                    evidence_ref="event-2", confidence=0.9,
+                    intensity_delta=3, now=start + timedelta(hours=1))
+    assert concern.intensity == 4
+    assert concern.evidence_refs == ["event-1", "event-2"]
+
+
+def test_sensitive_concern_requires_higher_confidence():
+    policy = ConcernPolicy()
+    assert policy.activate(None, key="self_harm", summary="ambiguous phrase",
+                           evidence_ref="event-1", confidence=0.8,
+                           intensity_delta=4) is None
+
+
 def test_silence_eases_but_does_not_claim_resolution():
     policy = ConcernPolicy(easing_after_hours=12, easing_half_life_hours=24)
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)

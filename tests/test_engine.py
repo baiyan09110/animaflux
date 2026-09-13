@@ -46,6 +46,15 @@ def test_circadian_messages_rouse_without_implying_getting_up():
     assert policy.rouse(4) == "waking"
     assert policy.after_late_interaction(176) == 180
     assert policy.recover_next_day(120) == 90
+    assert policy.phase_after_interaction("wind_down", 9) == "wind_down"
+    assert policy.phase_after_interaction("asleep", 1) == "half_awake"
+
+
+def test_late_chat_delays_sleep_but_not_sleep_pressure():
+    policy = CircadianPolicy(sleep_minute=60, wake_minute=450, wind_down_minutes=60)
+    assert policy.phase_at(45, offset=120) == "sleepy"
+    assert policy.phase_at(90, offset=120) == "sleepy"
+    assert policy.phase_at(190, offset=120) == "asleep"
 
 
 def test_sleepiness_changes_observable_expression_form():
@@ -56,3 +65,17 @@ def test_sleepiness_changes_observable_expression_form():
     assert "sleepiness" in texture.reasons
     assert "extreme sleepiness" in texture.reasons
     assert "half_awake" in texture.reasons
+    assert any("fully awake" in rule for rule in texture.guidance)
+
+
+def test_active_concern_produces_repair_guidance_without_forcing_repetition():
+    state = AgentState().to_dict()
+    state["relationship"]["unresolved_tension"] = 4
+    state["concerns"]["conflict"] = {
+        "summary": "a recent disagreement",
+        "intensity": 5,
+        "status": "OPEN",
+    }
+    texture = compile_expression(state)
+    assert "active concern" in texture.reasons
+    assert any("only when relevant" in rule for rule in texture.guidance)

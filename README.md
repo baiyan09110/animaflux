@@ -43,8 +43,8 @@ appraisal before a new delta is applied.
 
 ## Status
 
-AnimaFlux is currently a private pre-release extraction from a running personal
-system. The public `0.1.0` target includes:
+AnimaFlux `0.1.0` is the first public source release, extracted from a running
+personal system. It includes:
 
 - typed state and appraisal schemas;
 - deterministic decay and bounded transition logic;
@@ -66,7 +66,14 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-The API is not stable before `0.1.0`.
+The API is young and may evolve between early releases.
+
+## License
+
+AnimaFlux is available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md). You may use, study, modify,
+and redistribute it for permitted noncommercial purposes. Commercial use is not
+granted by this license; contact the maintainer if you need separate terms.
 
 ## Credits
 

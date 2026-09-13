@@ -23,3 +23,15 @@ memories. Integrations decide where those memories live.
 Evaluator output is untrusted data. The transition policy owns numeric bounds,
 allowed fields, idempotency, and persistence. Expression guidance is additive
 context and must never overwrite the host application's system prompt.
+
+## Circadian continuity
+
+Schedule drift delays actual sleep and the following wake time. It does not
+move the onset of wind-down or sleep pressure, so late conversation makes the
+agent increasingly tired instead of artificially alert. A user message only
+rouses the agent after the current phase has reached `asleep`; messages during
+`wind_down` or `sleepy` preserve those phases.
+
+Circadian guidance constrains response form, not truth or capability. Host
+applications should keep necessary content and safety intact while making low
+alertness observable through cadence, length, and coherence.

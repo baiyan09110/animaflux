@@ -4,9 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "animaflux"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Continuity beneath the conversation."
 readme = "README.md"
+license = { file = "LICENSE.md" }
 requires-python = ">=3.11"
 authors = [{ name = "baiyan09110" }]
 classifiers = [
@@ -14,6 +15,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.11",
+  "License :: Other/Proprietary License",
 ]
 
 [project.optional-dependencies]

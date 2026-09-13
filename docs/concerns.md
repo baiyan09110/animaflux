@@ -22,6 +22,9 @@ The implementation intentionally enforces these rules:
 - silence can ease intensity but cannot prove resolution;
 - resolution requires a separate evidence reference;
 - recurrence is counted when new evidence reopens a resolved concern;
+- multiple observations inside one episode improve grounding without repeatedly
+  increasing intensity;
+- sensitive harm-related concerns require a higher confidence threshold;
 - aggregate intensity is led by the strongest concern rather than a raw sum.
 
 This prevents a transient model failure from becoming permanent emotional debt.

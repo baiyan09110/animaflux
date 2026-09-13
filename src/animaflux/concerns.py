@@ -55,6 +55,9 @@ class Concern:
 @dataclass(slots=True)
 class ConcernPolicy:
     min_confidence: float = 0.65
+    sensitive_min_confidence: float = 0.85
+    episode_cooldown_hours: float = 6.0
+    reinforcement_step: float = 0.5
     easing_after_hours: float = 12.0
     easing_half_life_hours: float = 24.0
     max_evidence_refs: int = 24
@@ -65,7 +68,9 @@ class ConcernPolicy:
         grounding: Grounding = Grounding.EVIDENCE, now: datetime | None = None,
     ) -> Concern | None:
         """Activate only grounded, confident evidence; repeated evidence is idempotent."""
-        if not evidence_ref or confidence < self.min_confidence:
+        sensitive = any(token in key.lower() for token in ("self_harm", "suicide", "harm_impulse"))
+        threshold = self.sensitive_min_confidence if sensitive else self.min_confidence
+        if not evidence_ref or confidence < threshold:
             return existing
         now_text = (now or datetime.now(timezone.utc)).isoformat()
         if existing is None:
@@ -80,7 +85,20 @@ class ConcernPolicy:
         existing.status = ConcernStatus.OPEN
         existing.summary = summary
         existing.grounding = grounding
-        existing.intensity = self._clamp(existing.intensity + min(1.5, max(0.0, intensity_delta)))
+        if reopened:
+            existing.intensity = self._clamp(max(0.5, intensity_delta))
+        else:
+            then = datetime.fromisoformat(existing.updated_at.replace("Z", "+00:00"))
+            current = now or datetime.now(timezone.utc)
+            hours = max(0.0, (current - then).total_seconds() / 3600)
+            if hours < self.episode_cooldown_hours:
+                # More evidence from the same episode improves grounding without
+                # manufacturing ever-growing emotional debt.
+                existing.intensity = self._clamp(max(existing.intensity, intensity_delta))
+            else:
+                existing.intensity = self._clamp(
+                    existing.intensity + min(self.reinforcement_step, max(0.0, intensity_delta))
+                )
         existing.evidence_refs = (existing.evidence_refs + [evidence_ref])[-self.max_evidence_refs :]
         existing.updated_at = now_text
         existing.activated_at = now_text
