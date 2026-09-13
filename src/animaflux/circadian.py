@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 PHASES = {"awake", "wind_down", "sleepy", "asleep", "half_awake", "waking"}
 
 
@@ -25,9 +24,7 @@ class CircadianPolicy:
         wake = (self.wake_minute + offset) % 1440
         # Late interaction can delay actual sleep and the next wake time, but it
         # must not erase the sleep pressure that was already building.
-        sleepy = (
-            self.sleep_minute - min(30, max(10, self.wind_down_minutes // 2))
-        ) % 1440
+        sleepy = (self.sleep_minute - min(30, max(10, self.wind_down_minutes // 2))) % 1440
         wind = (self.sleep_minute - self.wind_down_minutes) % 1440
         if in_window(minute, sleep, wake):
             return "asleep"
@@ -51,4 +48,12 @@ class CircadianPolicy:
         return min(self.max_schedule_offset, max(0, offset) + self.late_interaction_shift)
 
     def recover_next_day(self, offset: int) -> int:
-        return max(0, round(min(self.max_schedule_offset, offset) * self.daily_recovery))
+        return max(0, int(min(self.max_schedule_offset, offset) * self.daily_recovery))
+
+    def recover_once(
+        self, offset: int, last_recovery_date: str | None, date_key: str
+    ) -> tuple[int, str]:
+        """Recover at most once for a calendar date."""
+        if last_recovery_date == date_key:
+            return max(0, min(self.max_schedule_offset, offset)), date_key
+        return self.recover_next_day(offset), date_key

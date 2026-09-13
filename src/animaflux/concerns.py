@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from math import exp, log
 
@@ -11,6 +11,7 @@ from .models import utc_now
 class ConcernStatus(StrEnum):
     OPEN = "OPEN"
     EASING = "EASING"
+    DORMANT = "DORMANT"
     RESOLVED = "RESOLVED"
     SUPPRESSED = "SUPPRESSED"
 
@@ -40,10 +41,13 @@ class Concern:
         return value
 
     @classmethod
-    def from_dict(cls, value: dict) -> "Concern":
+    def from_dict(cls, value: dict) -> Concern:
         return cls(
-            key=value["key"], summary=value["summary"], intensity=float(value["intensity"]),
-            status=ConcernStatus(value["status"]), grounding=Grounding(value["grounding"]),
+            key=value["key"],
+            summary=value["summary"],
+            intensity=float(value["intensity"]),
+            status=ConcernStatus(value["status"]),
+            grounding=Grounding(value["grounding"]),
             evidence_refs=list(value.get("evidence_refs", [])),
             resolution_refs=list(value.get("resolution_refs", [])),
             recurrence_count=int(value.get("recurrence_count", 0)),
@@ -60,36 +64,49 @@ class ConcernPolicy:
     reinforcement_step: float = 0.5
     easing_after_hours: float = 12.0
     easing_half_life_hours: float = 24.0
+    dormant_below: float = 0.1
     max_evidence_refs: int = 24
 
     def activate(
-        self, existing: Concern | None, *, key: str, summary: str,
-        evidence_ref: str | None, confidence: float, intensity_delta: float,
-        grounding: Grounding = Grounding.EVIDENCE, now: datetime | None = None,
+        self,
+        existing: Concern | None,
+        *,
+        key: str,
+        summary: str,
+        evidence_ref: str | None,
+        confidence: float,
+        intensity_delta: float,
+        grounding: Grounding = Grounding.EVIDENCE,
+        now: datetime | None = None,
     ) -> Concern | None:
         """Activate only grounded, confident evidence; repeated evidence is idempotent."""
         sensitive = any(token in key.lower() for token in ("self_harm", "suicide", "harm_impulse"))
         threshold = self.sensitive_min_confidence if sensitive else self.min_confidence
         if not evidence_ref or confidence < threshold:
             return existing
-        now_text = (now or datetime.now(timezone.utc)).isoformat()
+        now_text = (now or datetime.now(UTC)).isoformat()
         if existing is None:
             return Concern(
-                key=key, summary=summary, intensity=self._clamp(max(0.5, intensity_delta)),
-                status=ConcernStatus.OPEN, grounding=grounding, evidence_refs=[evidence_ref],
-                activated_at=now_text, updated_at=now_text,
+                key=key,
+                summary=summary,
+                intensity=self._clamp(max(0.5, intensity_delta)),
+                status=ConcernStatus.OPEN,
+                grounding=grounding,
+                evidence_refs=[evidence_ref],
+                activated_at=now_text,
+                updated_at=now_text,
             )
         if existing.status == ConcernStatus.SUPPRESSED or evidence_ref in existing.evidence_refs:
             return existing
-        reopened = existing.status == ConcernStatus.RESOLVED
+        reopened = existing.status in {ConcernStatus.RESOLVED, ConcernStatus.DORMANT}
         existing.status = ConcernStatus.OPEN
         existing.summary = summary
         existing.grounding = grounding
         if reopened:
             existing.intensity = self._clamp(max(0.5, intensity_delta))
         else:
-            then = datetime.fromisoformat(existing.updated_at.replace("Z", "+00:00"))
-            current = now or datetime.now(timezone.utc)
+            then = datetime.fromisoformat(existing.updated_at)
+            current = now or datetime.now(UTC)
             hours = max(0.0, (current - then).total_seconds() / 3600)
             if hours < self.episode_cooldown_hours:
                 # More evidence from the same episode improves grounding without
@@ -99,7 +116,9 @@ class ConcernPolicy:
                 existing.intensity = self._clamp(
                     existing.intensity + min(self.reinforcement_step, max(0.0, intensity_delta))
                 )
-        existing.evidence_refs = (existing.evidence_refs + [evidence_ref])[-self.max_evidence_refs :]
+        existing.evidence_refs = (existing.evidence_refs + [evidence_ref])[
+            -self.max_evidence_refs :
+        ]
         existing.updated_at = now_text
         existing.activated_at = now_text
         if reopened:
@@ -110,8 +129,8 @@ class ConcernPolicy:
         """Silence may ease a concern, but can never prove that it was resolved."""
         if concern.status not in {ConcernStatus.OPEN, ConcernStatus.EASING}:
             return concern
-        now = now or datetime.now(timezone.utc)
-        then = datetime.fromisoformat(concern.updated_at.replace("Z", "+00:00"))
+        now = now or datetime.now(UTC)
+        then = datetime.fromisoformat(concern.updated_at)
         quiet_hours = max(0.0, (now - then).total_seconds() / 3600)
         if concern.status == ConcernStatus.OPEN and quiet_hours < self.easing_after_hours:
             return concern
@@ -124,27 +143,38 @@ class ConcernPolicy:
         concern.intensity = round(
             concern.intensity * exp(-log(2) * decay_hours / self.easing_half_life_hours), 3
         )
+        if concern.intensity < self.dormant_below:
+            concern.status = ConcernStatus.DORMANT
+            concern.intensity = 0.0
         concern.updated_at = now.isoformat()
         return concern
 
-    def resolve(self, concern: Concern, evidence_ref: str | None, now: datetime | None = None) -> Concern:
+    def resolve(
+        self, concern: Concern, evidence_ref: str | None, now: datetime | None = None
+    ) -> Concern:
         if not evidence_ref:
             raise ValueError("resolution requires an evidence reference")
         concern.status = ConcernStatus.RESOLVED
         concern.intensity = 0.0
-        concern.resolution_refs = (concern.resolution_refs + [evidence_ref])[-self.max_evidence_refs :]
-        concern.updated_at = (now or datetime.now(timezone.utc)).isoformat()
+        concern.resolution_refs = (concern.resolution_refs + [evidence_ref])[
+            -self.max_evidence_refs :
+        ]
+        concern.updated_at = (now or datetime.now(UTC)).isoformat()
         return concern
 
     def suppress(self, concern: Concern, now: datetime | None = None) -> Concern:
         concern.status = ConcernStatus.SUPPRESSED
-        concern.updated_at = (now or datetime.now(timezone.utc)).isoformat()
+        concern.updated_at = (now or datetime.now(UTC)).isoformat()
         return concern
 
     @staticmethod
     def aggregate_intensity(concerns: list[Concern]) -> float:
         active = sorted(
-            (c.intensity for c in concerns if c.status in {ConcernStatus.OPEN, ConcernStatus.EASING}),
+            (
+                c.intensity
+                for c in concerns
+                if c.status in {ConcernStatus.OPEN, ConcernStatus.EASING}
+            ),
             reverse=True,
         )
         return ConcernPolicy._clamp(active[0] + 0.2 * sum(active[1:])) if active else 0.0

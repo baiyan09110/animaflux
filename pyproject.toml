@@ -4,17 +4,20 @@ build-backend = "hatchling.build"
 
 [project]
 name = "animaflux"
-version = "0.1.0"
+version = "0.1.1"
 description = "Continuity beneath the conversation."
 readme = "README.md"
-license = { file = "LICENSE.md" }
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.11"
 authors = [{ name = "baiyan09110" }]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "License :: Other/Proprietary License",
 ]
 

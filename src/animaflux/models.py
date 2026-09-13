@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
+CURRENT_SCHEMA_VERSION = 1
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @dataclass(slots=True)
@@ -46,6 +48,7 @@ class CircadianState:
     phase: str = "awake"
     schedule_offset_minutes: int = 0
     changed_at: str = field(default_factory=utc_now)
+    last_recovery_date: str | None = None
 
 
 @dataclass(slots=True)
@@ -58,6 +61,7 @@ class SharedHistory:
 
 @dataclass(slots=True)
 class AgentState:
+    schema_version: int = CURRENT_SCHEMA_VERSION
     emotion: EmotionState = field(default_factory=EmotionState)
     relationship: RelationshipState = field(default_factory=RelationshipState)
     self_state: SelfState = field(default_factory=SelfState)
@@ -69,6 +73,24 @@ class AgentState:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any] | None) -> AgentState:
+        """Load old/partial persisted state by filling all missing fields."""
+        value = value or {}
+        return cls(
+            schema_version=CURRENT_SCHEMA_VERSION,
+            emotion=EmotionState(**_known(EmotionState, value.get("emotion", {}))),
+            relationship=RelationshipState(
+                **_known(RelationshipState, value.get("relationship", {}))
+            ),
+            self_state=SelfState(**_known(SelfState, value.get("self_state", {}))),
+            inner=InnerState(**_known(InnerState, value.get("inner", {}))),
+            circadian=CircadianState(**_known(CircadianState, value.get("circadian", {}))),
+            shared_history=SharedHistory(**_known(SharedHistory, value.get("shared_history", {}))),
+            concerns=dict(value.get("concerns", {})),
+            updated_at=str(value.get("updated_at") or utc_now()),
+        )
 
 
 @dataclass(slots=True)
@@ -98,11 +120,37 @@ class Transition:
     transition_id: str
     created_at: str
     event: str
+    event_id: str | None
     appraisal: Appraisal
     previous_state: dict[str, Any]
+    proposed_delta: dict[str, dict[str, float]]
     applied_delta: dict[str, dict[str, float]]
     next_state: dict[str, Any]
+    policy_notes: list[str] = field(default_factory=list)
     memory_refs: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> Transition:
+        return cls(
+            transition_id=value["transition_id"],
+            created_at=value["created_at"],
+            event=value["event"],
+            event_id=value.get("event_id"),
+            appraisal=Appraisal(**value.get("appraisal", {})),
+            previous_state=value["previous_state"],
+            proposed_delta=value.get("proposed_delta", value.get("applied_delta", {})),
+            applied_delta=value.get("applied_delta", {}),
+            next_state=value["next_state"],
+            policy_notes=list(value.get("policy_notes", [])),
+            memory_refs=list(value.get("memory_refs", [])),
+        )
+
+
+def _known(model: type, value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    names = model.__dataclass_fields__
+    return {key: item for key, item in value.items() if key in names}

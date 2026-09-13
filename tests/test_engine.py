@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from animaflux import (
     AgentState,
@@ -26,7 +26,7 @@ def test_decay_happens_before_appraisal_and_delta(tmp_path):
     store = JsonStore(tmp_path)
     state = AgentState().to_dict()
     state["emotion"]["anger"] = 8
-    state["updated_at"] = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+    state["updated_at"] = (datetime.now(UTC) - timedelta(hours=6)).isoformat()
     store.save_state(state)
 
     transition = StateEngine(store, StubEvaluator()).process(

@@ -5,11 +5,11 @@ explain what remains unresolved or why. AnimaFlux therefore keeps inspectable
 concern records behind any aggregate tension signal.
 
 ```text
-new evidence ──► OPEN ──quiet time──► EASING
-                   ▲                    │
-                   │ recurrence         │ explicit evidence
-                   │                    ▼
-                RESOLVED ◄──────────────┘
+new evidence ──► OPEN ──quiet time──► EASING ──low intensity──► DORMANT
+                   ▲                    │                         │
+                   │                    │ explicit evidence       │ recurrence
+                   │                    ▼                         │
+                   └─────────────── RESOLVED ◄────────────────────┘
 
 manual policy may place any concern in SUPPRESSED
 ```
@@ -20,6 +20,8 @@ The implementation intentionally enforces these rules:
 - low-confidence appraisal cannot create a concern;
 - replaying the same evidence is idempotent;
 - silence can ease intensity but cannot prove resolution;
+- sufficiently faint easing concerns become dormant and leave expression
+  guidance without pretending that repair occurred;
 - resolution requires a separate evidence reference;
 - recurrence is counted when new evidence reopens a resolved concern;
 - multiple observations inside one episode improve grounding without repeatedly

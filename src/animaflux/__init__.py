@@ -1,10 +1,10 @@
 """AnimaFlux: continuity beneath the conversation."""
 
-from .engine import StateEngine
-from .expression import ExpressionTexture, compile_expression
 from .circadian import CircadianPolicy
 from .concerns import Concern, ConcernPolicy, ConcernStatus, Grounding
-from .models import AgentState, Appraisal, MemoryInfluence, StateDelta
+from .engine import StateEngine, TransitionPolicy
+from .expression import ExpressionTexture, compile_expression
+from .models import AgentState, Appraisal, MemoryInfluence, StateDelta, Transition
 from .storage import JsonStore, SQLiteStore, StateStore
 
 __all__ = [
@@ -22,7 +22,9 @@ __all__ = [
     "StateDelta",
     "StateEngine",
     "StateStore",
+    "Transition",
+    "TransitionPolicy",
     "compile_expression",
 ]
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.1"

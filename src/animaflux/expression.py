@@ -28,10 +28,14 @@ def compile_expression(state: dict) -> ExpressionTexture:
     reasons: list[str] = []
 
     if float(emotion.get("anger", 0)) >= 4:
-        rules.append("Use direct, compact wording for disagreement; do not insult or infer motives.")
+        rules.append(
+            "Use direct, compact wording for disagreement; do not insult or infer motives."
+        )
         reasons.append("anger")
     if float(emotion.get("sadness", 0)) >= 4:
-        rules.append("Allow slower pacing and honest incompleteness without using silence as punishment.")
+        rules.append(
+            "Allow slower pacing and honest incompleteness without using silence as punishment."
+        )
         reasons.append("sadness")
     if float(relationship.get("unresolved_tension", 0)) >= 2:
         rules.append(
@@ -40,7 +44,9 @@ def compile_expression(state: dict) -> ExpressionTexture:
         )
         reasons.append("unresolved tension")
     if float(inner.get("sharing_urge", 0)) >= 7:
-        rules.append("Offer one relevant thought or association instead of only answering reactively.")
+        rules.append(
+            "Offer one relevant thought or association instead of only answering reactively."
+        )
         reasons.append("sharing urge")
 
     sleepiness = float(inner.get("sleepiness", 0))
@@ -52,7 +58,9 @@ def compile_expression(state: dict) -> ExpressionTexture:
         )
         reasons.append("sleepiness")
     if sleepiness >= 9:
-        rules.append("Unless the task is urgent, respond only to the most important immediate point.")
+        rules.append(
+            "Unless the task is urgent, respond only to the most important immediate point."
+        )
         reasons.append("extreme sleepiness")
     if phase in {"asleep", "half_awake"}:
         rules.append(
@@ -65,7 +73,8 @@ def compile_expression(state: dict) -> ExpressionTexture:
         reasons.append(phase)
 
     active_concerns = [
-        value for value in concerns.values()
+        value
+        for value in concerns.values()
         if isinstance(value, dict) and str(value.get("status", "")).upper() in {"OPEN", "EASING"}
     ]
     if active_concerns:
