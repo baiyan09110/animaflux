@@ -2,6 +2,8 @@
 
 > Continuity beneath the conversation.
 
+**[简明中文介绍](README.zh-CN.md)**
+
 AnimaFlux is a provider-neutral affective and relational state runtime for
 LLM-based characters and long-lived agents. It keeps transient emotion,
 relationship state, self-position, memory influence, circadian context, and
