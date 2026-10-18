@@ -27,7 +27,7 @@ with TemporaryDirectory() as runtime_directory:
     engine = StateEngine(
         JsonStore(runtime_directory),
         ExampleEvaluator(),
-        circadian_policy=CircadianPolicy(timezone_name="Asia/Shanghai"),
+        circadian_policy=CircadianPolicy(timezone_name="UTC"),
     )
     transition = engine.process(
         "The user returned after a disagreement.",

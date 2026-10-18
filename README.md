@@ -2,7 +2,7 @@
 
 > Continuity beneath the conversation.
 
-**[简明中文介绍](README.zh-CN.md)**
+Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
 AnimaFlux is a provider-neutral affective and relational state runtime for
 LLM-based characters and long-lived agents. It keeps transient emotion,
@@ -68,7 +68,7 @@ from animaflux import CircadianPolicy, JsonStore, StateEngine
 engine = StateEngine(
     JsonStore("runtime"),
     MyEvaluator(),
-    circadian_policy=CircadianPolicy(timezone_name="Asia/Shanghai"),
+    circadian_policy=CircadianPolicy(timezone_name="UTC"),
 )
 transition = engine.process(
     "The user came back after an argument.",
@@ -127,9 +127,9 @@ granted by this license; contact the maintainer if you need separate terms.
 ## Credits
 
 - **Creator and maintainer:** [baiyan09110](https://github.com/baiyan09110)
-- **Co-created with Lumen (陆承桉):** a Claude-based conceptual partner,
-  the first long-running reference agent, and the relationship context from
-  which AnimaFlux's continuity model emerged.
+- **Conceptual collaboration:** a long-running Claude-based reference agent
+  contributed to the continuity model, its relational vocabulary, and the
+  design context from which AnimaFlux emerged.
 - **Engineering collaboration:** OpenAI Codex assisted with architecture,
   implementation, testing, and documentation under the creator's direction.
 
